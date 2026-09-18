@@ -7,6 +7,13 @@ module packet_parser (
     input  logic       s_axis_tvalid,
     input  logic       s_axis_tlast,
     output logic       s_axis_tready
+
+    // Classification
+    output logic [31:0] parsed_src_ip
+    output logic [31:0] parsed_dst_ip
+    output logic [15:0] parsed_src_port
+    output logic [15:0] parsed_dst_port
+    output logic       parsed_valid
 );
 
     // FSM States
@@ -61,6 +68,8 @@ module packet_parser (
     dst_port_next = dst_port_reg;
 
     s_axis_tready = 1'b1;
+
+    parsed_valid = 1'b0;
 
     if (s_axis_tvalid) begin
         case (state_reg) 
@@ -118,8 +127,10 @@ module packet_parser (
                 if (s_axis_tlast) // If the network sends a tiny, broken packet that ends prematurely, abort
                     state_next = IDLE;
 
-                else if (byte_cnt_reg == 41) // Done parsing
+                else if (byte_cnt_reg == 41) begin // Done parsing
                     state_next = WAIT_EOF;
+                    parsed_valid = 1'b1;
+                end
 
                 case (byte_cnt_reg)
                     // Source Port
@@ -141,4 +152,10 @@ module packet_parser (
     end
     end
 
+    // Outputs
+    assign parsed_src_ip = src_ip_reg;
+    assign parsed_dst_ip = dst_ip_reg;
+
+    assign parsed_src_port = src_port_reg;
+    assign parsed_dst_port = dst_port_reg;
 endmodule
