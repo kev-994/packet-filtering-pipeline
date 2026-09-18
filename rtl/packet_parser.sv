@@ -20,7 +20,8 @@ module packet_parser (
 
     state_t state_reg, state_next;
     
-    logic [15:0] byte_cnt_reg, byte_cnt_next;
+    logic [15:0] byte_cnt_reg, byte_cnt_next, src_port_reg, src_port_next, dst_port_reg, dst_port_next;
+    logic [31:0] src_ip_reg, src_ip_next, dst_ip_reg, dst_ip_next;
 
 
     // Sequential logic
@@ -28,17 +29,36 @@ module packet_parser (
         if (!rst_n) begin
             state_reg <= IDLE;
             byte_cnt_reg <= 16'b0;
+
+            src_ip_reg <= 32'b0;
+            dst_ip_reg <= 32'b0;
+
+            src_port_reg <= 16'b0;
+            dst_port_reg <= 16'b0;
         end
+        
         else begin
             state_reg <= state_next;
             byte_cnt_reg <= byte_cnt_next;
+
+            src_ip_reg <= src_ip_next;
+            dst_ip_reg <= dst_ip_next;
+
+            src_port_reg <= src_port_next;
+            dst_port_reg <= dst_port_next;
         end
     end
 
-    // Combinational logic
+    // FSM control loop, IP address extracting
     always_comb begin
     state_next = state_reg;
     byte_cnt_next = byte_cnt_reg;
+
+    src_ip_next = src_ip_reg;
+    dst_ip_next = dst_ip_reg;
+
+    src_port_next = src_port_reg;
+    dst_port_next = dst_port_reg;
 
     s_axis_tready = 1'b1;
 
@@ -76,6 +96,20 @@ module packet_parser (
 
                 else if (byte_cnt_reg == 33) // Standard IPv4 header ends at byte 33
                     state_next = PARSE_UDP;
+                
+                case (byte_cnt_reg)
+                    // Source IP
+                    16'd26: src_ip_next = {src_ip_reg[23:0], s_axis_tdata};
+                    16'd27: src_ip_next = {src_ip_reg[23:0], s_axis_tdata};
+                    16'd28: src_ip_next = {src_ip_reg[23:0], s_axis_tdata};
+                    16'd29: src_ip_next = {src_ip_reg[23:0], s_axis_tdata};
+
+                    // Destination IP
+                    16'd30: dst_ip_next = {dst_ip_reg[23:0], s_axis_tdata};
+                    16'd31: dst_ip_next = {dst_ip_reg[23:0], s_axis_tdata};
+                    16'd32: dst_ip_next = {dst_ip_reg[23:0], s_axis_tdata};
+                    16'd33: dst_ip_next = {dst_ip_reg[23:0], s_axis_tdata};
+                endcase
             end
             
             PARSE_UDP: begin
@@ -86,6 +120,17 @@ module packet_parser (
 
                 else if (byte_cnt_reg == 41) // Done parsing
                     state_next = WAIT_EOF;
+
+                case (byte_cnt_reg)
+                    // Source Port
+                    16'd34: src_port_next = {src_port_reg[7:0], s_axis_tdata};
+                    16'd35: src_port_next = {src_port_reg[7:0], s_axis_tdata};
+
+                    // Destination Port
+                    16'd36: dst_port_next = {dst_port_reg[7:0], s_axis_tdata};
+                    16'd37: dst_port_next = {dst_port_reg[7:0], s_axis_tdata};
+                endcase
+
             end
             
             WAIT_EOF: begin
