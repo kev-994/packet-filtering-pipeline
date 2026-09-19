@@ -16,6 +16,7 @@ int main(int argc, char** argv) {
     dut->s_axis_tvalid = 0;
     dut->s_axis_tdata = 0;
     dut->s_axis_tlast = 0;
+    dut->parsed_ready = 1;
 
     // Toggle the clock to apply the reset to the DFFs
     dut->clk = 1; dut->eval();

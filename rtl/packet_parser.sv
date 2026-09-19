@@ -13,7 +13,9 @@ module packet_parser (
     output logic [31:0] parsed_dst_ip,
     output logic [15:0] parsed_src_port,
     output logic [15:0] parsed_dst_port,
-    output logic       parsed_valid
+    
+    input  logic        parsed_ready,
+    output logic        parsed_valid
 );
 
     // FSM States
@@ -67,11 +69,11 @@ module packet_parser (
     src_port_next = src_port_reg;
     dst_port_next = dst_port_reg;
 
-    s_axis_tready = 1'b1;
+    s_axis_tready = parsed_ready; // is downstream ready to take on more data?
 
     parsed_valid = 1'b0;
 
-    if (s_axis_tvalid) begin
+    if (s_axis_tvalid && s_axis_tready) begin // valid/ready handshake
         case (state_reg) 
             IDLE: begin 
                 state_next = PARSE_ETH;
