@@ -6,13 +6,13 @@ module packet_parser (
     input  logic [7:0] s_axis_tdata,
     input  logic       s_axis_tvalid,
     input  logic       s_axis_tlast,
-    output logic       s_axis_tready
+    output logic       s_axis_tready,
 
     // Classification
-    output logic [31:0] parsed_src_ip
-    output logic [31:0] parsed_dst_ip
-    output logic [15:0] parsed_src_port
-    output logic [15:0] parsed_dst_port
+    output logic [31:0] parsed_src_ip,
+    output logic [31:0] parsed_dst_ip,
+    output logic [15:0] parsed_src_port,
+    output logic [15:0] parsed_dst_port,
     output logic       parsed_valid
 );
 
@@ -118,6 +118,8 @@ module packet_parser (
                     16'd31: dst_ip_next = {dst_ip_reg[23:0], s_axis_tdata};
                     16'd32: dst_ip_next = {dst_ip_reg[23:0], s_axis_tdata};
                     16'd33: dst_ip_next = {dst_ip_reg[23:0], s_axis_tdata};
+
+                    default:;
                 endcase
             end
             
@@ -140,6 +142,8 @@ module packet_parser (
                     // Destination Port
                     16'd36: dst_port_next = {dst_port_reg[7:0], s_axis_tdata};
                     16'd37: dst_port_next = {dst_port_reg[7:0], s_axis_tdata};
+
+                    default:;
                 endcase
 
             end
@@ -148,6 +152,8 @@ module packet_parser (
                 if (s_axis_tlast) // Packet is over
                     state_next = IDLE; 
             end
+
+            default:;
         endcase
     end
     end
