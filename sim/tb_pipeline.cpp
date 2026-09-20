@@ -8,26 +8,50 @@
 #include "verilated.h"
 
 // Reusable function to inject a packet and monitor the outputs
-void inject_packet(Vpipeline_top* dut, const std::vector<uint8_t>& packet, std::string_view name, VerilatedVcdC* tfp, std::uint64_t& sim_time) {
+void inject_packet(Vpipeline_top* dut, const std::vector<uint8_t>& packet, std::string_view name, VerilatedVcdC* tfp, uint64_t& sim_time) {
     std::cout << "\nInjecting " << name << "...\n";
     
-    for (std::size_t i = 0; i < packet.size(); ++i) {
+    std::size_t i = 0;
+    while (i < packet.size()) {
         // Drive data and valid
         dut->s_axis_tdata = packet[i];
         dut->s_axis_tvalid = 1;
         dut->s_axis_tlast = (i == packet.size() - 1) ? 1 : 0;
+
+        // AXI Handshake check: Did the hardware accept the byte on this rising edge?
+        bool accepted = (dut->s_axis_tready == 1);
         
         // Toggle clock high
-        dut->clk = 1; 
-        dut->eval();
-        tfp->dump(sim_time++); // Write high state to waveform and advance time
+        dut->clk = 1; dut->eval();
+        if (tfp) tfp->dump(sim_time++);
         
         // Toggle clock low
-        dut->clk = 0; 
-        dut->eval();
-        tfp->dump(sim_time++); // Write low state to waveform and advance time
+        dut->clk = 0; dut->eval();
+        if (tfp) tfp->dump(sim_time++);
 
-        // Check if the classifier has evaluated this packet
+        // Check if the classifier has evaluated this packet early
+        if (dut->classify_valid) {
+            std::cout << "Classification Result -> action_drop: " 
+                      << static_cast<int>(dut->action_drop) << "\n";
+        }
+        
+        // Only move to the next byte if the hardware was ready
+        if (accepted) {
+            i++;
+        }
+    }
+    
+    // Add idle clock cycles to let the pipeline process the final bytes and scan the memory
+    dut->s_axis_tvalid = 0;
+    dut->s_axis_tlast = 0;
+    for (int j = 0; j < 10; ++j) { // 10 cycles gives plenty of time to scan the table
+        dut->clk = 1; dut->eval();
+        if (tfp) tfp->dump(sim_time++);
+        
+        dut->clk = 0; dut->eval();
+        if (tfp) tfp->dump(sim_time++);
+        
+        // Check for the classification result during the pipeline drain
         if (dut->classify_valid) {
             std::cout << "Classification Result -> action_drop: " 
                       << static_cast<int>(dut->action_drop) << "\n";

@@ -128,12 +128,11 @@ module packet_parser (
             PARSE_UDP: begin
                 byte_cnt_next = byte_cnt_reg + 16'd1;
 
-                if (s_axis_tlast) // If the network sends a tiny, broken packet that ends prematurely, abort
-                    state_next = IDLE;
-
-                else if (byte_cnt_reg == 41) begin // Done parsing
-                    state_next = WAIT_EOF;
+                if (byte_cnt_reg == 41) begin // Perfect packet completion
+                    state_next = s_axis_tlast ? IDLE : WAIT_EOF;
                     parsed_valid = 1'b1;
+                end else if (s_axis_tlast) begin // Premature EOF
+                    state_next = IDLE;
                 end
 
                 case (byte_cnt_reg)
