@@ -11,7 +11,11 @@ module pipeline_top (
 
     // Classification Egress
     output logic action_drop,
-    output logic classify_valid
+    output logic classify_valid,
+
+    // Performance counters
+    output logic [63:0] cycle_count,
+    output logic [31:0] packet_count
 
 );
 
@@ -54,6 +58,19 @@ module pipeline_top (
         .action_drop(action_drop),
         .classify_valid(classify_valid)
     );
+
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
+            cycle_count  <= 64'b0;
+            packet_count <= 32'b0;
+        end else begin
+            cycle_count <= cycle_count + 64'd1;
+            
+            if (classify_valid) begin
+                packet_count <= packet_count + 32'd1;
+            end
+        end
+    end
     
 
 endmodule
