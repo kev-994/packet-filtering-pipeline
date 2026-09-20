@@ -1,17 +1,27 @@
 from scapy.all import Ether, IP, UDP, wrpcap
+import random
 
-# 1. Benign Packet (Should pass through)
-pkt1 = Ether(src="aa:aa:aa:aa:aa:aa", dst="bb:bb:bb:bb:bb:bb") / \
-       IP(src="192.168.1.50", dst="10.0.0.1") / \
-       UDP(sport=1234, dport=80) / \
-       b"Hello Hardware!"
+packets = []
+malicious_ip = "192.168.1.100"
+benign_ips = [f"10.0.1.{i}" for i in range(1, 20)]
 
-# 2. Malicious Packet (Matches rule_table[2] target)
-pkt2 = Ether(src="aa:aa:aa:aa:aa:aa", dst="bb:bb:bb:bb:bb:bb") / \
-       IP(src="192.168.1.100", dst="10.0.0.1") / \
-       UDP(sport=1234, dport=80) / \
-       b"Drop me!"
+print("Generating 1000 packets. Please wait...")
 
-# 3. Write to file
-wrpcap("sim/test_traffic.pcap", [pkt1, pkt2])
-print("Successfully generated sim/test_traffic.pcap")
+for i in range(1000):
+    # 10% chance to inject a malicious packet
+    if random.random() < 0.10:
+        src_ip = malicious_ip
+        payload = b"Malicious drop payload!"
+    else:
+        src_ip = random.choice(benign_ips)
+        payload = b"Standard background web traffic..."
+        
+    pkt = Ether(src="aa:aa:aa:aa:aa:aa", dst="bb:bb:bb:bb:bb:bb") / \
+          IP(src=src_ip, dst="192.168.1.1") / \
+          UDP(sport=random.randint(1024, 65535), dport=80) / \
+          payload
+          
+    packets.append(pkt)
+
+wrpcap("sim/test_traffic.pcap", packets)
+print(f"Successfully generated sim/test_traffic.pcap with {len(packets)} packets.")
