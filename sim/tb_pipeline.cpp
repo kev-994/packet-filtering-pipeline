@@ -33,10 +33,22 @@ bool software_reference_model(const std::vector<uint8_t>& packet) {
     // Standard Ethernet header is 14 bytes. IPv4 Source IP starts at byte 26.
     if (packet.size() < 30) return false; 
     
-    // Check if Source IP matches our malicious target: 192.168.1.100 (C0 A8 01 64)
-    if (packet[26] == 0xC0 && packet[27] == 0xA8 && 
-        packet[28] == 0x01 && packet[29] == 0x64) {
-        return true; // Drop
+    // Reconstruct the 32-bit Source IP from the 4 byte vector elements
+    uint32_t src_ip = (packet[26] << 24) | (packet[27] << 16) | 
+                      (packet[28] << 8)  | packet[29];
+                      
+    // Define the exact same blocklist as the hardware rule_table
+    std::vector<uint32_t> blocklist = {
+        0xFFFFFFFF, // 255.255.255.255
+        0xC0A80164, // 192.168.1.100
+        0x0A000005  // 10.0.0.5
+    };
+    
+    // Check if the source IP exists in our blocklist
+    for (uint32_t blocked_ip : blocklist) {
+        if (src_ip == blocked_ip) {
+            return true; // Drop
+        }
     }
     
     return false; // Pass
