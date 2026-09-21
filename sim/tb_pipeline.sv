@@ -49,7 +49,7 @@ module tb_pipeline;
         s_axis_tlast = 0;
 
         // Load the parsed PCAP hex data
-        $readmemh("sim/packets.hex", packet_mem);
+        $readmemh("packets.hex", packet_mem);
 
         // Hold reset
         #100;
